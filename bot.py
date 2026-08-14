@@ -218,7 +218,7 @@ async def addpara(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("⚠️ ID ve miktar sayı olmalıdır.")
         return
 
-    get_user(hedef_id, f"Kullanıcı_{hedef_id}")
+    # Sadece bakiyeyi güncelliyoruz, isme dokunmuyoruz ki veritabanı bozulmasın
     update_balance(hedef_id, miktar)
     await update.message.reply_text(f"🛠️ [Admin Paneli] `{hedef_id}` ID'li kullanıcıya {miktar} TL eklendi.")
     
