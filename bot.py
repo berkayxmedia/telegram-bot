@@ -130,7 +130,19 @@ async def zenginler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         isim = row[0] if row[0] else "Bilinmeyen Oyuncu"
         text += f"{i}. {isim} — **{row[1]}** TL\n"
     await update.message.reply_text(text, parse_mode="Markdown")
-    
+    def get_user(user_id, username="Oyuncu"):
+    cursor.execute('SELECT balance, last_daily FROM users WHERE user_id = ?', (user_id,))
+    row = cursor.fetchone()
+    if not row:
+        cursor.execute('INSERT INTO users (user_id, username, balance) VALUES (?, ?, ?)', (user_id, username, 1000))
+        conn.commit()
+        return 1000, None
+    else:
+        # Kullanıcı varsa ismini güncel tutalım ki zenginler listesinde düzgün çıksın
+        cursor.execute('UPDATE users SET username = ? WHERE user_id = ?', (username, user_id))
+        conn.commit()
+    return row[0], row[1]
+        
 async def getir(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     bal, _ = get_user(user.id, user.first_name)
