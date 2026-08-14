@@ -517,7 +517,7 @@ async def merdiven_komut(update: Update, context: ContextTypes.DEFAULT_TYPE):
     bal, _ = get_user(user.id, user.first_name)
     miktar = miktar_coz(args[0], bal)
 
-    if not miktar or bal < miktar or miktar <=      
+    if not miktar or bal < miktar or miktar <= 0:
         await update.message.reply_text("❌ Bakiyen yetersiz veya geçersiz miktar!")
         return
 
