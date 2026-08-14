@@ -123,13 +123,23 @@ async def gunluk(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("🎁 Günlük ödülün olan **500 TL** hesabına eklendi!")
 
 async def zenginler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = update.effective_user
+    get_user(user.id, user.first_name)
+
     cursor.execute('SELECT username, balance FROM users ORDER BY balance DESC LIMIT 10')
     rows = cursor.fetchall()
+    
     text = "🏆 **En Zengin 10 Oyuncu**\n\n"
-    for i, row in enumerate(rows, 1):
-        isim = row[0] if row[0] else "Bilinmeyen Oyuncu"
-        text += f"{i}. {isim} — **{row[1]}** TL\n"
+    if not rows:
+        text += "Henüz kayıtlı oyuncu yok."
+    else:
+        for i, row in enumerate(rows, 1):
+            isim = row[0] if row[0] else "Oyuncu"
+            bakiye_miktari = row[1] if row[1] is not محفوظة else 0
+            text += f"{i}. {isim} — **{bakiye_miktari}** TL\n"
+            
     await update.message.reply_text(text, parse_mode="Markdown")
+            
     def get_user(user_id, username="Oyuncu"):
     cursor.execute('SELECT balance, last_daily FROM users WHERE user_id = ?', (user_id,))
     row = cursor.fetchone()
