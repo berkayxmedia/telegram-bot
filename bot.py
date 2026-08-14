@@ -137,13 +137,12 @@ async def zenginler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         text += "Henüz kayıtlı oyuncu yok."
     else:
         for i, row in enumerate(rows, 1):
-            isim = row[0] if row[0] else "Oyuncu"
+            isin = row[0] if row[0] else "Oyuncu"
             bakiye_miktari = row[1] if row[1] is not None else 0
-            text += f"{i}. {isim} — **{bakiye_miktari}** TL\n"
+            text += f"{i}. {isin} — **{bakiye_miktari:,}** TL\n"
             
     await update.message.reply_text(text, parse_mode="Markdown")
-         
-    await update.message.reply_text(text, parse_mode="Markdown")
+    
             
     def get_user(user_id, username="Oyuncu"):
     cursor.execute('SELECT balance, last_daily FROM users WHERE user_id = ?', (user_id,))
