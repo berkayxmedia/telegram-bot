@@ -127,9 +127,10 @@ async def zenginler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     rows = cursor.fetchall()
     text = "🏆 **En Zengin 10 Oyuncu**\n\n"
     for i, row in enumerate(rows, 1):
-        text += f"{i}. {row[0]} — **{row[1]}** TL\n"
+        isim = row[0] if row[0] else "Bilinmeyen Oyuncu"
+        text += f"{i}. {isim} — **{row[1]}** TL\n"
     await update.message.reply_text(text, parse_mode="Markdown")
-
+    
 async def getir(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     bal, _ = get_user(user.id, user.first_name)
