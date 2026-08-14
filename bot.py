@@ -37,7 +37,7 @@ conn.commit()
 # Aktif uçuşları takip etmek için sözlük
 aviator_aktif_oyunlar = {}
 
-def get_user(user_id, username="Oyuncu"):
+ def get_user(user_id, username="Oyuncu"):
     cursor.execute('SELECT balance, last_daily FROM users WHERE user_id = ?', (user_id,))
     row = cursor.fetchone()
     if not row:
