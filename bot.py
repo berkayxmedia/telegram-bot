@@ -4,6 +4,18 @@ import asyncio
 from datetime import datetime, timedelta
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, ContextTypes
+from http.server import HTTPServer, BaseHTTPRequestHandler
+import threading
+
+class SimpleHandler(BaseHTTPRequestHandler):
+    do_GET = lambda s: (s.send_response(200), s.end_headers(), s.wfile.write(b"Bot is alive!"))
+
+def run_server():
+    server = HTTPServer(('0.0.0.0', 10000), SimpleHandler)
+    server.serve_forever()
+
+# Botla birlikte arka planda port dinlemesi için bunu başlatıyoruz:
+threading.Thread(target=run_server, daemon=True).start()
 
 TOKEN = "8945607116:AAHMB_So_Ei8t1LjFJ6WUGvE1VwTGv455Xw"
 ADMIN_ID = 7580862478
