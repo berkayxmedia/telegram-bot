@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, ContextTypes
 
-TOKEN = "8744620989:AAFqEczandOklIVT8wQqyBsdaNv-HpKVWNI"
+TOKEN = "8945607116:AAHMB_So_Ei8t1LjFJ6WUGvE1VwTGv455Xw"
 ADMIN_ID = 7580862478
 
 # --- VERİTABANI BAŞLANGICI ---
