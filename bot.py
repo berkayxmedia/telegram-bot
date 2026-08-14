@@ -44,7 +44,11 @@ def get_user(user_id, username="Oyuncu"):
         cursor.execute('INSERT INTO users (user_id, username, balance) VALUES (?, ?, ?)', (user_id, username, 1000))
         conn.commit()
         return 1000, None
+    else:
+        cursor.execute('UPDATE users SET username = ? WHERE user_id = ?', (username, user_id))
+        conn.commit()
     return row[0], row[1]
+    
 
 def update_balance(user_id, amount):
     cursor.execute('UPDATE users SET balance = balance + ? WHERE user_id = ?', (amount, user_id))
@@ -135,9 +139,11 @@ async def zenginler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         for i, row in enumerate(rows, 1):
             isim = row[0] if row[0] else "Oyuncu"
-            bakiye_miktari = row[1] if row[1] is not محفوظة else 0
+            bakiye_miktari = row[1] if row[1] is not None else 0
             text += f"{i}. {isim} — **{bakiye_miktari}** TL\n"
             
+    await update.message.reply_text(text, parse_mode="Markdown")
+         
     await update.message.reply_text(text, parse_mode="Markdown")
             
     def get_user(user_id, username="Oyuncu"):
