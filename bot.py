@@ -573,7 +573,7 @@ async def merdiven_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 parse_mode="Markdown"
             )
         else:
-            await query.edit_message_text(
+             await query.edit_message_text(
                 f"💥 Bot **{patlama_noktasi}x**'te patladı, sen **{secilen_carpan}x** seçmiştin!\n"
                 f"😢 Merdivenden düştün, kaybettin.",
                 parse_mode="Markdown"
