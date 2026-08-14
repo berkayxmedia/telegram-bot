@@ -190,9 +190,10 @@ async def addpara(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("⚠️ ID ve miktar sayı olmalıdır.")
         return
 
-    get_user(hedef_id, "Oyuncu")
+    get_user(hedef_id, f"Kullanıcı_{hedef_id}")
     update_balance(hedef_id, miktar)
     await update.message.reply_text(f"🛠️ [Admin Paneli] `{hedef_id}` ID'li kullanıcıya {miktar} TL eklendi.")
+    
 
 # --- SLOT OYUNU (%51 Kazanma Şansı) ---
 async def slot(update: Update, context: ContextTypes.DEFAULT_TYPE):
