@@ -143,7 +143,6 @@ async def zenginler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             
     await update.message.reply_text(text, parse_mode="Markdown")
     
-# BURASI ÇOK ÖNEMLİ: get_user en soldan (0 boşlukla) başlıyor, içeri gömülü değil!
 def get_user(user_id, username="Oyuncu"):
     cursor.execute('SELECT balance, last_daily FROM users WHERE user_id = ?', (user_id,))
     row = cursor.fetchone()
@@ -156,22 +155,6 @@ def get_user(user_id, username="Oyuncu"):
         conn.commit()
     return row[0], row[1]
     
-            text += f"{i}. {isin} — **{bakiye_miktari:,}** TL\n"
-            
-    await update.message.reply_text(text, parse_mode="Markdown")
-    
-    def get_user(user_id, username="Oyuncu"):
-    cursor.execute('SELECT balance, last_daily FROM users WHERE user_id = ?', (user_id,))
-    row = cursor.fetchone()
-    if not row:
-        cursor.execute('INSERT INTO users (user_id, username, balance) VALUES (?, ?, ?)', (user_id, username, 1000))
-        conn.commit()
-        return 1000, None
-    else:
-        cursor.execute('UPDATE users SET username = ? WHERE user_id = ?', (username, user_id))
-        conn.commit()
-    return row[0], row[1]
-  
 async def getir(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     bal, _ = get_user(user.id, user.first_name)
