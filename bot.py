@@ -234,62 +234,60 @@ async def addpara(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def slot(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     bakiye, _ = get_user(user.id, user.first_name)
-    
     bahis = 100
+    
     if bakiye < bahis:
-        await update.message.reply_text("❌ **Yetersiz Bakiye!**\n\nSlot çevirmek için en az **100 TL** bakiyen olmalıdır.", parse_mode="Markdown")
+        await update.message.reply_text("❌ **Yetersiz Bakiye!**")
         return
 
-    semboller = ["🍒", "🍋", "🍊", "🍇", "🔔", "💎", "7️⃣"]
+    # Animasyon mesajı
+    msg = await update.message.reply_text("🎰  **SİBİRYA KASİNO**  🎰\n\n[  🔄  |  🔄  |  🔄  ]\n\n*Makaralar dönüyor...*")
+    await asyncio.sleep(1) 
     
-    # Makaralar dönüyor hissi için rastgele semboller
-    s1 = random.choice(semboller)
-    s2 = random.choice(semboller)
-    s3 = random.choice(semboller)
-    
-    # %60 Kazanma Oranı (3 ihtimalin 2'si kazanç, 1'i kayıp)
-    kazanma_durumu = random.choice([True, True, False])
+    # Genişletilmiş semboller
+    semboller = ["🍒", "🍋", "🍊", "🍇", "🍉", "🍓", "🍍", "🥝", "🍌", "🍑", "🔔", "💎", "⭐", "🍀", "🧿"]
+    s1, s2, s3 = random.choice(semboller), random.choice(semboller), random.choice(semboller)
     
     kazanc = 0
-    carpici = 0
-    
-    if kazanma_durumu:
-        # 1x ile 150x arasında tamamen rastgele havalı çarpan
-        carpici = random.randint(1, 150)
+    ozel_mesaj = ""
+    carpici = 0.0
+
+    if s1 == s2 == s3:
+        # 50X için %50 şans kontrolü
+        if random.choice([True, False]):
+            carpici = 50.0
+            ozel_mesaj = f"🔥 **JACKPOT! {s1}{s1}{s1}**"
+        else:
+            # Diğer çarpanlar
+            carpici = random.choice([2.5, 5.0, 10.0, 15.0, 20.0])
+            ozel_mesaj = f"🎉 **KAZANDIN! {s1}{s1}{s1}**"
+            
         kazanc = int(bahis * carpici)
-        net_fark = kazanc - bahis
-        
-        cursor.execute('UPDATE users SET balance = balance + ? WHERE user_id = ?', (net_fark, user.id))
+    
+    if kazanc > 0:
+        cursor.execute('UPDATE users SET balance = balance + ? WHERE user_id = ?', (kazanc - bahis, user.id))
         conn.commit()
-        
         yeni_bakiye, _ = get_user(user.id, user.first_name)
-        mesaj = (
-            f"🎰  **SİBİRYA KASİNO • SLOT**  🎰\n\n"
-            f"━━━━━━━━━━━━━━━━━━━━━━━\n"
-            f"          [  **{s1}**  |  **{s2}**  |  **{s3}**  ]          \n"
-            f"━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-            f"✨  **Durum:** Kazandın!\n"
-            f"🚀  **Şanslı Çarpan:** `{carpici}X`'te durdu\n"
-            f"💰  **Kazanılan Tutar:** `+{kazanc:,} TL`\n\n"
-            f"💳  **Güncel Bakiye:** `{yeni_bakiye:,} TL`"
+        sonuc = (
+            f"🎰  **SİBİRYA KASİNO**  🎰\n\n"
+            f"          [  **{s1}**  |  **{s2}**  |  **{s3}**  ]          \n\n"
+            f"{ozel_mesaj}\n"
+            f"🚀  **Çarpan:** `{carpici}X`\n"
+            f"💰  **Kazanç:** `+{kazanc:,} TL`"
         )
     else:
-        # Kaybetme durumu (-100 TL)
         cursor.execute('UPDATE users SET balance = balance - ? WHERE user_id = ?', (bahis, user.id))
         conn.commit()
-        
         yeni_bakiye, _ = get_user(user.id, user.first_name)
-        mesaj = (
-            f"🎰  **SİBİRYA KASİNO • SLOT**  🎰\n\n"
-            f"━━━━━━━━━━━━━━━━━━━━━━━\n"
-            f"          [  **{s1}**  |  **{s2}**  |  **{s3}**  ]          \n"
-            f"━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        sonuc = (
+            f"🎰  **SİBİRYA KASİNO**  🎰\n\n"
+            f"          [  **{s1}**  |  **{s2}**  |  **{s3}**  ]          \n\n"
             f"🥀  **Durum:** Kaybettin\n"
-            f"💸  **Kaybedilen Tutar:** `-{bahis:,} TL`\n\n"
-            f"💳  **Güncel Bakiye:** `{yeni_bakiye:,} TL`"
+            f"💸  **Kaybedilen:** `-{bahis:,} TL`"
         )
 
-    await update.message.reply_text(mesaj, parse_mode="Markdown")
+    await msg.edit_text(f"{sonuc}\n\n💳  **Bakiye:** `{yeni_bakiye:,} TL`", parse_mode="Markdown")
+            
     
 # --- DİĞER OYUNLAR ---
 
