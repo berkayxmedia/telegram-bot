@@ -222,47 +222,55 @@ async def slot(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     bahis = 100
     if bakiye < bahis:
-        await update.message.reply_text("❌ **Yetersiz Bakiye!**")
+        await update.message.reply_text("❌ **Yetersiz Bakiye!**\nSlot çevirmek için en az **100 TL** bakiyen olmalıdır.", parse_mode="Markdown")
         return
 
     semboller = ["🍒", "🍋", "🍊", "🍇", "🔔", "💎", "7️⃣"]
+    
+    # Makaraları döndür (her seferinde tamamen rastgele değişir)
     s1 = random.choice(semboller)
     s2 = random.choice(semboller)
     s3 = random.choice(semboller)
     
-    # GERÇEK SLOT MANTIĞI:
     kazanc = 0
     carpici = 0
     
-    # 3 sembol aynıysa büyük kazanç
+    # KURAL: SADECE ÜÇÜ DE AYNI GELİRSE KAZANIR (2 tane yetmez!)
     if s1 == s2 == s3:
-        carpici = 20 if s1 != "7️⃣" else 50
+        # 1x ile 150x arasında tamamen rastgele devasa çarpan havuzu
+        carpici = random.randint(1, 150)
         kazanc = bahis * carpici
-    # 2 sembol aynıysa orta kazanç
-    elif s1 == s2 or s2 == s3 or s1 == s3:
-        carpici = random.choice([2, 5, 10])
-        kazanc = bahis * carpici
-    
+
     if kazanc > 0:
         net_fark = kazanc - bahis
         cursor.execute('UPDATE users SET balance = balance + ? WHERE user_id = ?', (net_fark, user.id))
         conn.commit()
+        
         yeni_bakiye, _ = get_user(user.id, user.first_name)
         mesaj = (
-            f"🎰 **SIBIHYA KASINO** 🎰\n━━━━━━━━━━━━━━━━━━━\n"
+            f"🎰 **SIBIHYA KASINO • SLOT** 🎰\n"
+            f"━━━━━━━━━━━━━━━━━━━\n"
             f"        [ {s1} | {s2} | {s3} ]        \n"
-            f"━━━━━━━━━━━━━━━━━━━\n✨ **Kazandın!** {carpici}X\n"
-            f"💰 **Tutar:** +{kazanc:,} TL\n💳 **Bakiye:** {yeni_bakiye:,} TL"
+            f"━━━━━━━━━━━━━━━━━━━\n"
+            f"🎉 **BÜYÜK İKRAMİYE!**\n"
+            f"🚀 **Çarpan:** `{carpici}X`\n"
+            f"💰 **Kazanılan:** `+{kazanc:,} TL`\n"
+            f"💳 **Güncel Bakiye:** `{yeni_bakiye:,} TL`"
         )
     else:
+        # 3'lemediği sürece (2 tane gelse bile) kaybeder
         cursor.execute('UPDATE users SET balance = balance - ? WHERE user_id = ?', (bahis, user.id))
         conn.commit()
+        
         yeni_bakiye, _ = get_user(user.id, user.first_name)
         mesaj = (
-            f"🎰 **SIBIHYA KASINO** 🎰\n━━━━━━━━━━━━━━━━━━━\n"
+            f"🎰 **SIBIHYA KASINO • SLOT** 🎰\n"
+            f"━━━━━━━━━━━━━━━━━━━\n"
             f"        [ {s1} | {s2} | {s3} ]        \n"
-            f"━━━━━━━━━━━━━━━━━━━\n🥀 **Kaybettin!**\n"
-            f"💸 **Tutar:** -{bahis:,} TL\n💳 **Bakiye:** {yeni_bakiye:,} TL"
+            f"━━━━━━━━━━━━━━━━━━━\n"
+            f"🥀 **Durum:** Kaybettin\n"
+            f"💸 **Kaybedilen:** `-{bahis:,} TL`\n"
+            f"💳 **Güncel Bakiye:** `{yeni_bakiye:,} TL`"
         )
 
     await update.message.reply_text(mesaj, parse_mode="Markdown")
