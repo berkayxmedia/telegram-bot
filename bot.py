@@ -267,14 +267,14 @@ async def slot(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     await asyncio.sleep(1.5)
     
-    semboller = ["🍒", "🍋", "🍊", "🍉", "🔔", "💎", "7️⃣"]
+    semboller = ["🍒", "🍋", "🍊", "🪎", "🔔", "💎", "7️⃣"]
     
-    # 2. KAZANMA ORANINI ZORLA YÜKSELTME (%45 KAZANMA ŞANSI)
-    if random.random() < 0.45:
+    # 2. KAZANMA ORANINI ZORLA YÜKSELTME (%55 KAZANMA ŞANSI)
+    if random.random() < 0.55:
         # Kod zorla üç sembolü aynı seçer ve kazandırır
         s1 = s2 = s3 = random.choice(semboller)
     else:
-        # Geri kalan %55'lik kısımda tamamen rastgele döner
+        # Geri kalan %45'lik kısımda tamamen rastgele döner
         s1 = random.choice(semboller)
         s2 = random.choice(semboller)
         s3 = random.choice(semboller)
@@ -287,7 +287,7 @@ async def slot(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if s1 == "🍒": carpici = 3; ozel_mesaj = "🍒 **VİŞNE SERİSİ!**"
         elif s1 == "🍋": carpici = 5; ozel_mesaj = "🍋 **LİMON KAZANCI!**"
         elif s1 == "🍊": carpici = 8; ozel_mesaj = "🍊 **PORTAKAL RÜYASI!**"
-        elif s1 == "🍉": carpici = 12; ozel_mesaj = "🍉 **KARPUZ ŞÖLENİ!**"
+        elif s1 == "🪎": carpici = 12; ozel_mesaj = "🪎 **PARA YAĞMURU!**"
         elif s1 == "🔔": carpici = 15; ozel_mesaj = "🔔 **ALTIN ÇANLAR!**"
         elif s1 == "💎": carpici = 25; ozel_mesaj = "💎 **ELMAS YAĞMURU!**"
         elif s1 == "7️⃣": carpici = 50; ozel_mesaj = "🔥 **EFSANEVİ JACKPOT 777!**"
