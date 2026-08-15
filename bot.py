@@ -120,10 +120,10 @@ async def gunluk(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text(f"⏳ Günlük ödülünü zaten aldın! Tekrar alabilmek için {saat} saat {dakika} dakika beklemelisin.")
             return
 
-    update_balance(user.id, 500)
+    update_balance(user.id, 5000)
     cursor.execute('UPDATE users SET last_daily = ? WHERE user_id = ?', (now.isoformat(), user.id))
     conn.commit()
-    await update.message.reply_text("🎁 Günlük ödülün olan **500 TL** hesabına eklendi!")
+    await update.message.reply_text("🎁 Günlük ödülün olan **5000 TL** hesabına eklendi!")
 
 async def zenginler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
@@ -251,9 +251,17 @@ async def slot(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     # Slot emojileri
+async def slot(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = update.effective_user
+    bakiye, _ = get_user(user.id, user.first_name)
+    
+    bahis = 100
+    if bakiye < bahis:
+        await update.message.reply_text("❌ **Yetersiz Bakiye!**\nSlot çevirmek için en az **100 TL** bakiyen olmalıdır.", parse_mode="Markdown")
+        return
+
     semboller = ["🍒", "🍋", "🍊", "🍇", "🔔", "💎", "7️⃣"]
     
-    # 3'lü makara döndürme
     s1 = random.choice(semboller)
     s2 = random.choice(semboller)
     s3 = random.choice(semboller)
@@ -261,47 +269,56 @@ async def slot(update: Update, context: ContextTypes.DEFAULT_TYPE):
     kazanc = 0
     carpici = 0
     
-    # Kazanma olasılığını artırmak ve çeşitli X'ler eklemek için ihtimaller:
-    # 1. Üçü de aynı gelirse büyük ikramiye!
+    # Çarpan mekanizması ve şans oranları
     if s1 == s2 == s3:
         if s1 == "7️⃣":
-            carpici = 50  # Üçlü 7 efsane kazandırır
+            carpici = 50
         elif s1 == "💎":
-            carpici = 30  # Üçlü elmas
+            carpici = 30
         else:
-            carpici = 20  # Diğer üçlüler
+            carpici = 20
         kazanc = bahis * carpici
         
-    # 2. İkisi aynı gelirse teselli / orta ikramiye
     elif s1 == s2 or s2 == s3 or s1 == s3:
-        carpici = random.choice([2, 3, 5, 10]) # Çeşitli küçük/orta x'ler
+        carpici = random.choice([2, 3, 5, 10, 15])
         kazanc = bahis * carpici
 
-    # 3. Hiçbiri tutmazsa ama yine de sürpriz rastgele küçük x'ler gelsin (Kazanma olasılığı artsın diye)
     else:
+        # Kazanma şansını artıran sürpriz küçük çarpanlar
         surpriz_sans = random.random()
-        if surpriz_sans < 0.35: # %35 ihtimalle boş spin yerine küçük bir teselli x'i versin
+        if surpriz_sans < 0.40:
             carpici = random.choice([1, 1.5, 2])
             kazanc = int(bahis * carpici)
 
-    # Bakiye güncelleme ve sonuç mesajı
+    # Sonuca göre bakiye ve kaliteli arayüz metni
     if kazanc > 0:
         net_kazanc = kazanc - bahis
         update_balance(user.id, net_kazanc)
+        yeni_bakiye, _ = get_user(user.id, user.first_name)
+        
         mesaj = (
-            f"🎰 **SLOT OYUNU** 🎰\n\n"
-            f"| {s1} | {s2} | {s3} |\n\n"
-            f"🎉 **Tebrikler!** {carpici}X kazandın!\n"
-            f"💰 Kazanılan Tutar: **+{kazanc:,}** TL"
+            f"🎰 **SIBIHYA KASINO • SLOT** 🎰\n"
+            f"━━━━━━━━━━━━━━━━━━━\n"
+            f"        [ {s1} | {s2} | {s3} ]        \n"
+            f"━━━━━━━━━━━━━━━━━━━\n"
+            f"✨ **Durum:** Kazandın!\n"
+            f"🚀 **Çarpan:** `{carpici}X`\n"
+            f"💰 **Kazanılan:** `+{kazanc:,} TL`\n"
+            f"💳 **Güncel Bakiye:** `{yeni_bakiye:,} TL`"
         )
     else:
-        # Kaybedilen tutarı düşüyoruz
+        # Kaybetme durumunda bakiyeden direkt düşüyoruz
         update_balance(user.id, -bahis)
+        yeni_bakiye, _ = get_user(user.id, user.first_name)
+        
         mesaj = (
-            f"🎰 **SLOT OYUNU** 🎰\n\n"
-            f"| {s1} | {s2} | {s3} |\n\n"
-            f"😢 **Kaybettin!**\n"
-            f"💸 Kaybedilen Tutar: **-{bahis:,}** TL"
+            f"🎰 **SIBIHYA KASINO • SLOT** 🎰\n"
+            f"━━━━━━━━━━━━━━━━━━━\n"
+            f"        [ {s1} | {s2} | {s3} ]        \n"
+            f"━━━━━━━━━━━━━━━━━━━\n"
+            f"🥀 **Durum:** Kaybettin\n"
+            f"💸 **Kaybedilen:** `-{bahis:,} TL`\n"
+            f"💳 **Güncel Bakiye:** `{yeni_bakiye:,} TL`"
         )
 
     await update.message.reply_text(mesaj, parse_mode="Markdown")
