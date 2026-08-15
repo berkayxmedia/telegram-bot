@@ -440,128 +440,66 @@ async def mayin(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # --- İNTERAKTİF AVİATOR ---
 
+import random
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+
+# Oyun durumlarını saklamak için bir sözlük (Kullanıcı ID : Oyun Bilgisi)
+aviator_games = {}
+
 async def aviator(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
-    args = context.args
-    if not args:
-        await update.message.reply_text("⚠️ Kullanım: `/aviator [miktar/max]`\nÖrnek: `/aviator 100`", parse_mode="Markdown")
-        return
+    bakiye, _ = get_user(user.id, user.first_name)
     
-    bal, _ = get_user(user.id, user.first_name)
-    miktar = miktar_coz(args[0], bal)
-
-    if not miktar or bal < miktar or miktar <= 0:
-        await update.message.reply_text("❌ Yetersiz bakiye veya geçersiz miktar!")
-        return
-        
-    if user.id in aviator_aktif_oyunlar:
-        await update.message.reply_text("⚠️ Zaten devam eden bir Aviator uçuşun var!")
+    bahis = 100 # Varsayılan
+    if context.args:
+        try: bahis = int(context.args[0])
+        except: pass
+    
+    if bakiye < bahis:
+        await update.message.reply_text("❌ Yetersiz bakiye!")
         return
 
-    update_balance(user.id, -miktar)
+    # Parayı kasaya hemen çekelim
+    cursor.execute('UPDATE users SET balance = balance - ? WHERE user_id = ?', (bahis, user.id))
+    conn.commit()
 
-    patlama_noktasi = round(random.choices(
-        [random.uniform(1.05, 2.0), random.uniform(2.0, 5.0), random.uniform(5.0, 20.0), random.uniform(20.0, 150.0)],
-        weights=[50, 30, 15, 5]
-    )[0], 2)
+    # Patlama noktasını oyun başında belirle (Adil şans)
+    patlama_x = round(random.uniform(1.0, 250.0), 2)
+    aviator_games[user.id] = {"bahis": bahis, "patlama": patlama_x, "aktif": True}
 
-    aviator_aktif_oyunlar[user.id] = {
-        "durum": "ucuyor",
-        "carpan": 1.00,
-        "patlama": patlama_noktasi,
-        "miktar": miktar
-    }
-
-    keyboard = [[InlineKeyboardButton("🚀 ÇEK / BOZDUR", callback_data=f"av_cek_{user.id}")]]
+    keyboard = [[InlineKeyboardButton("💸 PARAYI ÇEK", callback_data="cek")]]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    msg = await update.message.reply_text(
-        f"✈️ **AVİATOR KALKTI!**\n"
-        f"💰 Bahis: **{miktar}** TL\n\n"
-        f"📈 Anlık Çarpan: **1.00x**\n"
-        f"🚀 *Uçak yükseliyor, hızlı ol!*",
-        reply_markup=reply_markup,
-        parse_mode="Markdown"
+    await update.message.reply_text(
+        f"✈️ **AVIATOR BAŞLADI!**\n"
+        f"Bahis: `{bahis} TL`\n"
+        f"Çarpan: `1.00x`\n\n"
+        f"Uçak yükseliyor, butona zamanında bas!",
+        reply_markup=reply_markup, parse_mode="Markdown"
     )
 
-    while user.id in aviator_aktif_oyunlar and aviator_aktif_oyunlar[user.id]["durum"] == "ucuyor":
-        await asyncio.sleep(0.8)
-        if user.id not in aviator_aktif_oyunlar:
-            break
-            
-        oyun = aviator_aktif_oyunlar[user.id]
-        if oyun["durum"] != "ucuyor":
-            break
-
-        artis = random.uniform(0.08, 0.25) if oyun["carpan"] < 3.0 else random.uniform(0.2, 0.8)
-        oyun["carpan"] = round(oyun["carpan"] + artis, 2)
-
-        if oyun["carpan"] >= oyun["patlama"]:
-            oyun["durum"] = "patladi"
-            try:
-                await msg.edit_text(
-                    f"💥 **UÇAK PATLADI!**\n"
-                    f"✈️ Patlama Noktası: **{oyun['patlama']}x**\n"
-                    f"😢 Maalesef yetişemedin ve **{miktar}** TL kaybettin.",
-                    parse_mode="Markdown"
-                )
-            except:
-                pass
-            if user.id in aviator_aktif_oyunlar:
-                del aviator_aktif_oyunlar[user.id]
-            break
-
-        try:
-            current_kazanc = int(miktar * oyun["carpan"])
-            await msg.edit_text(
-                f"✈️ **AVİATOR UÇUYOR...**\n"
-                f"💰 Bahis: **{miktar}** TL\n\n"
-                f"📈 Anlık Çarpan: **{oyun['carpan']}x**\n"
-                f"💵 Olası Kazanç: **{current_kazanc}** TL",
-                reply_markup=reply_markup,
-                parse_mode="Markdown"
-            )
-        except:
-            pass
-
-async def aviator_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    data = query.data.split("_")
     user = query.from_user
+    
+    if user.id not in aviator_games or not aviator_games[user.id]["aktif"]:
+        await query.answer("❌ Oyun zaten bitti veya başlamadı!")
+        return
 
-    if data[1] == "cek":
-        hedef_user_id = int(data[2])
-        if user.id != hedef_user_id:
-            await query.answer("⚠️ Bu oyun sana ait değil!", show_alert=True)
-            return
-
-        if user.id not in aviator_aktif_oyunlar:
-            await query.answer("⚠️ Bu uçuş zaten sonlanmış!", show_alert=True)
-            return
-
-        oyun = aviator_aktif_oyunlar[user.id]
-        if oyun["durum"] != "ucuyor":
-            await query.answer("⚠️ Uçuş çoktan bitti!", show_alert=True)
-            return
-
-        oyun["durum"] = "cekildi"
-        carpan = oyun["carpan"]
-        miktar = oyun["miktar"]
-        kazanc = int(miktar * carpan)
-
-        update_balance(user.id, kazanc)
-        del aviator_aktif_oyunlar[user.id]
-
-        await query.answer(f"🎉 Başarıyla {carpan}x oranında bozdurdun!", show_alert=True)
-        try:
-            await query.edit_message_text(
-                f"✅ **BAŞARIYLA NAKTE ÇEVRİLDİ!**\n"
-                f"🎯 Yakalanan Çarpan: **{carpan}x**\n"
-                f"💰 Hesabına Eklenen: **{kazanc}** TL 🎉",
-                parse_mode="Markdown"
-            )
-        except:
-            pass
+    game = aviator_games[user.id]
+    # Şu anki rastgele bir anlık çarpan üret (patlama noktasını geçemez)
+    anlik_carpan = round(random.uniform(1.0, game["patlama"]), 2)
+    
+    kazanc = int(game["bahis"] * anlik_carpan)
+    cursor.execute('UPDATE users SET balance = balance + ? WHERE user_id = ?', (kazanc, user.id))
+    conn.commit()
+    
+    game["aktif"] = False
+    await query.message.edit_text(
+        f"✅ **KAZANDIN!**\n\n"
+        f"Çarpan: `{anlik_carpan}x`\n"
+        f"Toplam Ödeme: `{kazanc} TL`"
+    )
 
 async def blackjack(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
