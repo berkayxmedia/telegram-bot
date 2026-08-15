@@ -232,36 +232,20 @@ async def slot(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     semboller = ["🍒", "🍋", "🍊", "🍇", "🔔", "💎", "7️⃣"]
     
+    # Makara görünümü için rastgele semboller
     s1 = random.choice(semboller)
     s2 = random.choice(semboller)
     s3 = random.choice(semboller)
     
-    kazanc = 0
-    carpici = 0
+    # %60 Kazanma şansı (3 ihtimalden 2'si kazanç, 1'i kayıp)
+    kazanma_durumu = random.choice([True, True, False])
     
-    # Çarpan mekanizması
-    if s1 == s2 == s3:
-        if s1 == "7️⃣":
-            carpici = 50
-        elif s1 == "💎":
-            carpici = 30
-        else:
-            carpici = 20
-        kazanc = bahis * carpici
+    if kazanma_durumu:
+        # Şanslı çarpanlar
+        carpici = random.choice([1.5, 2, 3, 5, 10, 15, 25])
+        kazanc = int(bahis * carpici)
+        net_fark = kazanc - bahis
         
-    elif s1 == s2 or s2 == s3 or s1 == s3:
-        carpici = random.choice([2, 3, 5, 10, 15])
-        kazanc = bahis * carpici
-
-    else:
-        surpriz_sans = random.random()
-        if surpriz_sans < 0.40:
-            carpici = random.choice([1, 1.5, 2])
-            kazanc = int(bahis * carpici)
-
-    # Sonuca göre veritabanını doğrudan güncelliyoruz
-    if kazanc > 0:
-        net_fark = kazanc - bahis # Kazandığı paradan bahis miktarını netleştiriyoruz
         cursor.execute('UPDATE users SET balance = balance + ? WHERE user_id = ?', (net_fark, user.id))
         conn.commit()
         
@@ -277,7 +261,7 @@ async def slot(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"💳 **Güncel Bakiye:** `{yeni_bakiye:,} TL`"
         )
     else:
-        # Kaybettiğinde direkt 100 TL'yi veritabanından düşüyoruz ve net yazdırıyoruz
+        # Kaybetme durumu (-100 TL)
         cursor.execute('UPDATE users SET balance = balance - ? WHERE user_id = ?', (bahis, user.id))
         conn.commit()
         
