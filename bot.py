@@ -141,8 +141,7 @@ async def zenginler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             bakiye_miktari = row[1] if row[1] is not None else 0
             text += f"{i}. {isim} — **{bakiye_miktari:,}** TL\n"      
     await update.message.reply_text(text, parse_mode="Markdown")
-
-
+    
 # BURASI ÇOK ÖNEMLİ: get_user en soldan (0 boşlukla) başlıyor, içeri gömülü değil!
 def get_user(user_id, username="Oyuncu"):
     cursor.execute('SELECT balance, last_daily FROM users WHERE user_id = ?', (user_id,))
@@ -239,64 +238,74 @@ async def addpara(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # --- SLOT OYUNU (%51 Kazanma Şansı) ---
 async def slot(update: Update, context: ContextTypes.DEFAULT_TYPE):
+import random
+
+async def slot(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
-    args = context.args
-    if not args:
-        await update.message.reply_text("⚠️ Kullanım: `/slot [miktar/max]`", parse_mode="Markdown")
-        return
+    bakiye, _ = get_user(user.id, user.first_name)
     
-    bal, _ = get_user(user.id, user.first_name)
-    miktar = miktar_coz(args[0], bal)
-    
-    if not miktar or bal < miktar or miktar <= 0:
-        await update.message.reply_text("❌ Yetersiz bakiye veya geçersiz miktar!")
+    # Oyuncunun en az 100 TL'si olsun (isteğe göre değiştirebilirsin)
+    bahis = 100
+    if bakiye < bahis:
+        await update.message.reply_text("❌ Yetersiz bakiye! Slot çevirmek için en az 100 TL'ye ihtiyacın var.")
         return
 
-    update_balance(user.id, -miktar)
+    # Slot emojileri
+    semboller = ["🍒", "🍋", "🍊", "🍇", "🔔", "💎", "7️⃣"]
     
-    sembol_bilgileri = {
-        "🍒": {"isim": "Vişne Bahçesi", "carpan": 3},
-        "🍋": {"isim": "Limonya Fırtınası", "carpan": 4},
-        "🔔": {"isim": "Altın Çanlar", "carpan": 6},
-        "⭐": {"isim": "Kayan Yıldızlar", "carpan": 10},
-        "7️⃣": {"isim": "MEGA JACKPOT (777)", "carpan": 25}
-    }
-    
-    semboller = list(sembol_bilgileri.keys())
-    
-    msg = await update.message.reply_text("🎰 **CASINO ROYAL SLOT**\n| 🔄 | 🔄 | 🔄 |\n\n*Kollar çevriliyor, şansın dönüyor...*")
-    await asyncio.sleep(0.7)
-    
-    s1, s2, s3 = random.choice(semboller), random.choice(semboller), random.choice(semboller)
-    await msg.edit_text(f"🎰 **CASINO ROYAL SLOT**\n| {s1} | 🔄 | 🔄 |\n\n*Heyecan artıyor...*")
-    await asyncio.sleep(0.7)
-    
+    # 3'lü makara döndürme
+    s1 = random.choice(semboller)
     s2 = random.choice(semboller)
-    await msg.edit_text(f"🎰 **CASINO ROYAL SLOT**\n| {s1} | {s2} | 🔄 |\n\n*Son çark bekleniyor...*")
-    await asyncio.sleep(0.7)
+    s3 = random.choice(semboller)
     
-    if random.random() < 0.51:
-        secilen_sembol = random.choice(semboller)
-        s1, s2, s3 = secilen_sembol, secilen_sembol, secilen_sembol
-        bilgi = sembol_bilgileri[s1]
-        kazanc = miktar * bilgi["carpan"]
-        update_balance(user.id, kazanc + miktar)
-        sonuc_mesaji = f"🎰 **CASINO ROYAL SLOT SONUCU**\n━━━━━━━━━━━━━━━━━━━━━\n       | {s1} | {s2} | {s3} |\n━━━━━━━━━━━━━━━━━━━━━\n\n"
-        sonuc_mesaji += (
-            f"🏆 **ŞAHANE KAZANÇ! ({bilgi['isim']})** 🏆\n"
-            f"✨ 3 adet `{s1}` yan yana geldi!\n"
-            f"⚡ Çarpan: **{bilgi['carpan']}x**\n"
-            f"💰 Hesabına Eklenen Tutar: **{kazanc}** TL"
+    kazanc = 0
+    carpici = 0
+    
+    # Kazanma olasılığını artırmak ve çeşitli X'ler eklemek için ihtimaller:
+    # 1. Üçü de aynı gelirse büyük ikramiye!
+    if s1 == s2 == s3:
+        if s1 == "7️⃣":
+            carpici = 50  # Üçlü 7 efsane kazandırır
+        elif s1 == "💎":
+            carpici = 30  # Üçlü elmas
+        else:
+            carpici = 20  # Diğer üçlüler
+        kazanc = bahis * carpici
+        
+    # 2. İkisi aynı gelirse teselli / orta ikramiye
+    elif s1 == s2 or s2 == s3 or s1 == s3:
+        carpici = random.choice([2, 3, 5, 10]) # Çeşitli küçük/orta x'ler
+        kazanc = bahis * carpici
+
+    # 3. Hiçbiri tutmazsa ama yine de sürpriz rastgele küçük x'ler gelsin (Kazanma olasılığı artsın diye)
+    else:
+        surpriz_sans = random.random()
+        if surpriz_sans < 0.35: # %35 ihtimalle boş spin yerine küçük bir teselli x'i versin
+            carpici = random.choice([1, 1.5, 2])
+            kazanc = int(bahis * carpici)
+
+    # Bakiye güncelleme ve sonuç mesajı
+    if kazanc > 0:
+        net_kazanc = kazanc - bahis
+        update_balance(user.id, net_kazanc)
+        mesaj = (
+            f"🎰 **SLOT OYUNU** 🎰\n\n"
+            f"| {s1} | {s2} | {s3} |\n\n"
+            f"🎉 **Tebrikler!** {carpici}X kazandın!\n"
+            f"💰 Kazanılan Tutar: **+{kazanc:,}** TL"
         )
     else:
-        s1, s2, s3 = random.choice(semboller), random.choice(semboller), random.choice(semboller)
-        if s1 == s2 == s3:
-            s3 = "❌"
-        sonuc_mesaji = f"🎰 **CASINO ROYAL SLOT SONUCU**\n━━━━━━━━━━━━━━━━━━━━━\n       | {s1} | {s2} | {s3} |\n━━━━━━━━━━━━━━━━━━━━━\n\n"
-        sonuc_mesaji += "💨 *Çarklar boş geçti...* \n😢 Maalesef bu çevrimde kazanamadın, tekrar dene!"
-    
-    await msg.edit_text(sonuc_mesaji, parse_mode="Markdown")
+        # Kaybedilen tutarı düşüyoruz
+        update_balance(user.id, -bahis)
+        mesaj = (
+            f"🎰 **SLOT OYUNU** 🎰\n\n"
+            f"| {s1} | {s2} | {s3} |\n\n"
+            f"😢 **Kaybettin!**\n"
+            f"💸 Kaybedilen Tutar: **-{bahis:,}** TL"
+        )
 
+    await update.message.reply_text(mesaj, parse_mode="Markdown")
+    
 # --- DİĞER OYUNLAR ---
 
 async def yt(update: Update, context: ContextTypes.DEFAULT_TYPE):
