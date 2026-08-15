@@ -14,7 +14,7 @@ def run_server():
     server = HTTPServer(('0.0.0.0', 10000), SimpleHandler)
     server.serve_forever()
 
-# Botla birlikte arka planda port dinlemesi için bunu başlatıyoruz:
+# Botla birlikte arka planda port dinlemesi için bunu  başlatıyoruz:
 threading.Thread(target=run_server, daemon=True).start()
 
 TOKEN = "8945607116:AAHMB_So_Ei8t1LjFJ6WUGvE1VwTGv455Xw"
