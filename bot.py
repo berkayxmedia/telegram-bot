@@ -199,21 +199,36 @@ async def promo(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # --- ADMIN PANELİ ---
 async def addpara(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
+    
+    # Admin kontrolü
     if user.id != ADMIN_ID:
         await update.message.reply_text("⛔ Bu komutu sadece botun admini kullanabilir!")
         return
 
-    args = context.args
-    if len(args) < 2:
-        await update.message.reply_text("🛠️ **Admin Komutları**\n\nPara eklemek için:\n`/addpara [kullanıcı_id] [miktar]`", parse_mode="Markdown")
+    # Komuttan gelen metni doğrudan parçalayalım (boşluk sorununu kökten çözer)
+    text_args = update.message.text.split()
+    
+    if len(text_args) < 3:
+        await update.message.reply_text("⚠️ **Hatalı Kullanım!**\nDoğru Örnek: `/addpara 7580862478 100000`", parse_mode="Markdown")
         return
 
     try:
-        hedef_id = int(args[0])
-        miktar = int(args[1])
+        hedef_id = int(text_args[1])
+        miktar = int(text_args[2])
     except ValueError:
-        await update.message.reply_text("⚠️ ID ve miktar sayı olmalıdır.")
+        await update.message.reply_text("⚠️ ID ve miktar sadece sayı olmalıdır.")
         return
+
+    # Kullanıcıyı veritabanında kontrol et / oluştur
+    get_user(hedef_id, "Admin_Eklemesi")
+    
+    # Bakiyeyi güncelle
+    cursor.execute('UPDATE users SET balance = balance + ? WHERE user_id = ?', (miktar, hedef_id))
+    conn.commit()
+    
+    yeni_durum, _ = get_user(hedef_id, "Admin_Eklemesi")
+    await update.message.reply_text(f"✅ **Başarılı!**\nID: `{hedef_id}`\nEklenen: `+{miktar:,} TL`\n💳 Yeni Bakiye: `{yeni_durum:,} TL`", parse_mode="Markdown")
+    
 
     # Sadece bakiyeyi güncelliyoruz, isme dokunmuyoruz ki veritabanı bozulmasın
 async def slot(update: Update, context: ContextTypes.DEFAULT_TYPE):
