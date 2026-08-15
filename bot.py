@@ -260,22 +260,35 @@ async def admin_paneli(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # --- 2. TOPLU MESAJ KOMUTU ---
 async def toplu_mesaj(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def toplu_mesaj(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
+    if user.id != 7580862478: return
+
+    # .join yerine doğrudan tüm metni alıyoruz ki satır başları korunsun
+    if not context.message.text: return
     
-    # Sadece senin ID'n ile çalışır
-    if user.id != 7580862478:
-        await update.message.reply_text("❌ Bu komutu sadece admin kullanabilir!")
+    # "/toplumesaj" kısmını atıp geri kalan her şeyi alıyoruz
+    mesaj_metni = update.message.text.split(maxsplit=1)
+    if len(mesaj_metni) < 2:
+        await update.message.reply_text("⚠️ Lütfen gönderilecek mesajı yaz.")
         return
+    
+    duyuru = mesaj_metni[1] # Satır başlarını koruyan asıl metin burada
+    
+    cursor.execute("SELECT user_id FROM users")
+    users = cursor.fetchall()
+    
+    basarili = 0
+    await update.message.reply_text("🚀 Gönderim başlıyor...")
 
-    if not context.args:
-        await update.message.reply_text(
-            "⚠️ **Kullanım Hatası!**\n"
-            "Doğru kullanım: `/toplumesaj Büyük çekiliş başladı!`", 
-            parse_mode="Markdown"
-        )
-        return
+    for row in users:
+         try:
+             await context.bot.send_message(chat_id=row[0], text=duyuru, parse_mode="Markdown")
+             basarili += 1
+             await asyncio.sleep(0.1)
+         except: pass
 
-    mesaj_metni = " ".join(context.args)
+    await update.message.reply_text(f"✅ Gönderim tamamlandı. Ulaşılan: {basarili}")
     
     # Veritabanındaki tüm kullanıcıları çek
     cursor.execute("SELECT user_id FROM users")
