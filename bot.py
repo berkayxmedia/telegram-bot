@@ -237,11 +237,37 @@ async def admin_paneli(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     keyboard = [
         [InlineKeyboardButton("💰 Bakiye Yükle", callback_data="adm_addpara_sor")],
+        [InlineKeyboardButton("⚙️ Bakiye Düzenle/Sıfırla", callback_data="adm_setpara_sor")],
         [InlineKeyboardButton("📢 Toplu Mesaj Gönder", callback_data="adm_mesaj_bilgi")],
         [InlineKeyboardButton("📊 İstatistik", callback_data="adm_stats")]
     ]
     await update.message.reply_text("👑 **ADMİN PANELİ**", reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
+    
+# --- BAKIYE AYARLAMA / SIFIRLAMA KOMUTU ---
+async def set_para(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = update.effective_user
+    if user.id != 7580862478: return
 
+    if not context.args or len(context.args) < 2:
+        await update.message.reply_text("⚠️ **Kullanım:** `/setpara <user_id> <yeni_bakiye>`\nÖrnek: `/setpara 7580862478 5000`", parse_mode="Markdown")
+        return
+
+    try:
+        hedef_id = int(context.args[0])
+        yeni_bakiye = float(context.args[1])
+    except ValueError:
+        await update.message.reply_text("❌ ID ve bakiye sayısal olmalıdır!")
+        return
+
+    # Kullanıcıyı veritabanında kontrol et / oluştur
+    get_user(hedef_id, "Admin_Duzenleme")
+
+    # Bakiyeyi doğrudan yeni değere eşitle
+    cursor.execute("UPDATE users SET balance = ? WHERE user_id = ?", (yeni_bakiye, hedef_id))
+    conn.commit()
+
+    await update.message.reply_text(f"✅ **Başarılı!**\n🆔 ID: `{hedef_id}`\n💰 Yeni Bakiye: `{yeni_bakiye} TL` olarak güncellendi.", parse_mode="Markdown")
+    
 # --- 2. TOPLU MESAJ KOMUTU ---
 async def toplu_mesaj(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
