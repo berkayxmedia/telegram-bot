@@ -349,6 +349,11 @@ async def admin_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
     
     # 1. BAHİS MİKTARI OKUMA (KÖKTEN ÇÖZÜM)
+
+async def slot(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = update.effective_user
+    bakiye, _ = get_user(user.id, user.first_name)
+    
     bahis = 100 # Hiçbir şey yazılmazsa 100 TL
     
     if context.args:
