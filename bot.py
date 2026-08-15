@@ -440,118 +440,122 @@ async def mayin(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # --- İNTERAKTİF AVİATOR ---
 
+import asyncio
 import random
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import ContextTypes, CallbackQueryHandler
 
-# Oyun durumlarını saklamak için bir sözlük (Kullanıcı ID : Oyun Bilgisi)
-aviator_games = {}
-
+# --- AVIATOR OYUNU BAŞLATMA VE MENÜ ---
 async def aviator(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     bakiye, _ = get_user(user.id, user.first_name)
     
-    # Kullanıcıdan hem bahsi hem de hedef çarpanı alıyoruz
-    if len(context.args) < 2:
-        await update.message.reply_text(
-            "⚠️ **Kullanım:** `/aviator <bahis> <hedef_x>`\n"
-            "Örnek: `/aviator 100 2.5` (100 TL yatırır, 2.5x'te otomatik çeker)", 
-            parse_mode="Markdown"
-        )
-        return
-        
-    try:
-        bahis = float(context.args[0])
-        hedef_x = float(context.args[1])
-    except ValueError:
-        await update.message.reply_text("⚠️ **Hatalı format!** Bahis ve hedef çarpan sayı olmalıdır.")
+    if not context.args:
+        await update.message.reply_text("⚠️ **Kullanım:** `/aviator <bahis>` veya `/aviator max`", parse_mode="Markdown")
         return
 
-    # Sınırlandırmalar ve kontroller
+    if context.args[0].lower() == "max":
+        bahis = bakiye
+    else:
+        try:
+            bahis = int(context.args[0])
+        except ValueError:
+            await update.message.reply_text("⚠️ Hatalı miktar! Lütfen sayı girin.")
+            return
+
     if bahis <= 0:
         await update.message.reply_text("⚠️ Geçersiz bahis miktarı!")
         return
-        
-    if hedef_x < 1.01 or hedef_x > 250:
-        await update.message.reply_text("⚠️ Hedef çarpan **1.01x** ile **250x** arasında olmalıdır.")
-        return
 
     if bakiye < bahis:
-        await update.message.reply_text(f"❌ **Yetersiz Bakiye!**\n(Bakiyen: {bakiye:,.2f} TL)")
+        await update.message.reply_text(f"❌ **Yetersiz Bakiye!**\n(Bakiyen: {bakiye:,} TL)")
         return
 
-    # Oyuna girerken parayı bakiyeden düşüyoruz
+    # Merdiven tarzı hedef butonları
+    keyboard = [
+        [
+            InlineKeyboardButton("1.5x", callback_data=f"av_{bahis}_1.5"),
+            InlineKeyboardButton("2.0x", callback_data=f"av_{bahis}_2.0"),
+            InlineKeyboardButton("5.0x", callback_data=f"av_{bahis}_5.0")
+        ],
+        [
+            InlineKeyboardButton("10x", callback_data=f"av_{bahis}_10.0"),
+            InlineKeyboardButton("20x", callback_data=f"av_{bahis}_20.0"),
+            InlineKeyboardButton("50x", callback_data=f"av_{bahis}_50.0")
+        ],
+        [
+            InlineKeyboardButton("100x", callback_data=f"av_{bahis}_100.0"),
+            InlineKeyboardButton("250x", callback_data=f"av_{bahis}_250.0")
+        ]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    await update.message.reply_text(
+        f"🛫 **AVIATOR HEDEFİNİ SEÇ** 🛫\n\n"
+        f"💵 **Yatırılan:** `{bahis:,} TL`\n\n"
+        f"Aşağıdaki butonlardan uçağın geçeceğine inandığın hedefi seç:",
+        reply_markup=reply_markup, parse_mode="Markdown"
+    )
+
+# --- AVIATOR BUTON TIKLAMA VE SONUÇ İŞLEMLERİ ---
+
+async def aviator_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    user = query.from_user
+    
+    if not query.data.startswith("av_"):
+        return
+        
+    data = query.data.split('_')
+    bahis = int(data[1])
+    hedef_x = float(data[2])
+
+    # Oyuna girerken parayı bakiyeden düş
     cursor.execute('UPDATE users SET balance = balance - ? WHERE user_id = ?', (bahis, user.id))
     conn.commit()
 
-    # Başlangıç mesajı
-    msg = await update.message.reply_text(
-        f"🛫 **AVIATOR BAŞLIYOR!**\n\n"
-        f"💵 **Bahis:** `{bahis:,.2f} TL`\n"
-        f"🎯 **Hedeflenen Çarpan:** `{hedef_x}x`\n\n"
-        f"☁️ *Uçak havalanıyor...*", 
+    # Butonu kapatıp uçak kalkıyor animasyonu ver
+    await query.message.edit_text(
+        f"🛫 **AVIATOR HAVALANDI!**\n\n"
+        f"🎯 **Hedefin:** `{hedef_x}x`\n"
+        f"☁️ *Uçak yükseliyor, nefesler tutuldu...*",
         parse_mode="Markdown"
     )
     
-    # Uçağın uçma hissini vermek için ufak bir bekleme süresi
-    await asyncio.sleep(2.5)
+    await asyncio.sleep(2.5) # Animasyon hissi için bekleme
     
     # 1.00 ile 250.00 arası rastgele patlama noktasını belirliyoruz
     patlama_x = round(random.uniform(1.0, 250.0), 2)
     
-    # Sonuçları değerlendiriyoruz
     if hedef_x <= patlama_x:
-        # Uçak hedefi buldu veya geçti (KAZANÇ)
-        kazanc = bahis * hedef_x
+        kazanc = int(bahis * hedef_x)
         cursor.execute('UPDATE users SET balance = balance + ? WHERE user_id = ?', (kazanc, user.id))
         conn.commit()
-        
         yeni_bakiye, _ = get_user(user.id, user.first_name)
         
-        await msg.edit_text(
+        await query.message.edit_text(
             f"🛬 **UÇAK UÇTU!** (Patlama Noktası: `{patlama_x}x`)\n\n"
-            f"✅ **KAZANDIN!** Uçak belirlediğin hedefe ulaştı.\n\n"
+            f"✅ **KAZANDIN!** Uçak belirlediğin hedefe başarıyla ulaştı.\n\n"
             f"🎯 **Bozdurulan Hedef:** `{hedef_x}x`\n"
-            f"💰 **Kazanılan:** `+{kazanc:,.2f} TL`\n"
-            f"💳 **Güncel Bakiye:** `{yeni_bakiye:,.2f} TL`",
+            f"💰 **Kazanılan:** `+{kazanc:,} TL`\n"
+            f"💳 **Güncel Bakiye:** `{yeni_bakiye:,} TL`",
             parse_mode="Markdown"
         )
     else:
-        # Uçak hedefe ulaşamadan patladı (KAYIP)
-        # Bakiye zaten en başta düşüldüğü için sadece mesaj güncelliyoruz
+        # Kayıp durumunda Kasa (Admin) kazanır
+        cursor.execute('UPDATE users SET balance = balance + ? WHERE user_id = ?', (bahis, 7580862478))
+        conn.commit()
         yeni_bakiye, _ = get_user(user.id, user.first_name)
         
-        await msg.edit_text(
+        await query.message.edit_text(
             f"💥 **UÇAK DÜŞTÜ!** (Patlama Noktası: `{patlama_x}x`)\n\n"
             f"❌ **KAYBETTİN!** Uçak sen bozduramadan patladı.\n\n"
             f"🎯 **Hedefin:** `{hedef_x}x`\n"
-            f"💸 **Kaybedilen:** `-{bahis:,.2f} TL`\n"
-            f"💳 **Güncel Bakiye:** `{yeni_bakiye:,.2f} TL`",
+            f"💸 **Kaybedilen:** `-{bahis:,} TL`\n"
+            f"💳 **Güncel Bakiye:** `{yeni_bakiye:,} TL`",
             parse_mode="Markdown"
-        )
-
-async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    user = query.from_user
-    
-    if user.id not in aviator_games or not aviator_games[user.id]["aktif"]:
-        await query.answer("❌ Oyun zaten bitti veya başlamadı!")
-        return
-
-    game = aviator_games[user.id]
-    # Şu anki rastgele bir anlık çarpan üret (patlama noktasını geçemez)
-    anlik_carpan = round(random.uniform(1.0, game["patlama"]), 2)
-    
-    kazanc = int(game["bahis"] * anlik_carpan)
-    cursor.execute('UPDATE users SET balance = balance + ? WHERE user_id = ?', (kazanc, user.id))
-    conn.commit()
-    
-    game["aktif"] = False
-    await query.message.edit_text(
-        f"✅ **KAZANDIN!**\n\n"
-        f"Çarpan: `{anlik_carpan}x`\n"
-        f"Toplam Ödeme: `{kazanc} TL`"
     )
-
+        
 async def blackjack(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     args = context.args
