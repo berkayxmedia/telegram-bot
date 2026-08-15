@@ -235,64 +235,99 @@ async def slot(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     bakiye, _ = get_user(user.id, user.first_name)
     
-    # Bahis miktarını kullanıcının girdiği sayıdan al
+    # 1. BAHİS MİKTARI AYARLAMA (max komutu eklendi)
     text_args = update.message.text.split()
-    bahis = int(text_args[1]) if len(text_args) > 1 else 100
+    bahis = 100 # Varsayılan bahis
     
-    if bakiye < bahis:
-        await update.message.reply_text(f"❌ **Yetersiz Bakiye!**\nBahis miktarından ({bahis:,} TL) az bakiyen var.")
+    if len(text_args) > 1:
+        if text_args[1].lower() == "max":
+            bahis = bakiye
+        else:
+            try:
+                bahis = int(text_args[1])
+            except ValueError:
+                await update.message.reply_text("⚠️ **Hatalı miktar!** Lütfen sayı veya 'max' girin.")
+                return
+
+    if bahis <= 0:
+        await update.message.reply_text("⚠️ **Geçersiz bahis!**")
         return
 
-    msg = await update.message.reply_text("🎰  **SİBİRYA KASİNO**  🎰\n\n[  🔄  |  🔄  |  🔄  ]\n\n*Makaralar dönüyor...*")
-    await asyncio.sleep(1) 
+    if bakiye < bahis:
+        await update.message.reply_text(f"❌ **Yetersiz Bakiye!**\nBahis miktarından ({bahis:,} TL) az bakiyen var.", parse_mode="Markdown")
+        return
+
+    # 2. ANİMASYON (Gerçekçi dönme hissi)
+    msg = await update.message.reply_text(
+        "🎰  **SİBİRYA KASİNO • SLOT**  🎰\n\n"
+        "━━━━━━━━━━━━━━━━━━━\n"
+        "          [  🔄  |  🔄  |  🔄  ]          \n"
+        "━━━━━━━━━━━━━━━━━━━\n\n"
+        "⚡ *Makaralar hızla dönüyor...*", 
+        parse_mode="Markdown"
+    )
     
-    # Daha elit ve dengeli sembol havuzu
-    semboller = ["🍒", "🔔", "💎", "⭐", "🍀", "🧿", "💰", "👑"]
-    s1, s2, s3 = random.choice(semboller), random.choice(semboller), random.choice(semboller)
+    await asyncio.sleep(1.5) # Heyecan yaratmak için 1.5 saniye bekleme
+    
+    # 3. GERÇEK SLOT SEMBOLLERİ
+    semboller = ["🍒", "🍋", "🍊", "🍉", "🔔", "💎", "7️⃣"]
+    
+    s1 = random.choice(semboller)
+    s2 = random.choice(semboller)
+    s3 = random.choice(semboller)
     
     kazanc = 0
     carpici = 0
     ozel_mesaj = ""
 
+    # 4. KAZANMA DURUMU (Sadece üçü aynı gelirse)
     if s1 == s2 == s3:
-        if random.choice([True, False]):
-            carpici = 50
-            ozel_mesaj = f"🔥 **JACKPOT! {s1}{s1}{s1}**"
-        else:
-            carpici = random.choice([2.5, 5, 10, 15, 20])
-            ozel_mesaj = f"🎉 **KAZANDIN! {s1}{s1}{s1}**"
-        kazanc = int(bahis * carpici)
+        # Sembole göre gerçekçi oranlar
+        if s1 == "🍒": carpici = 5; ozel_mesaj = "🍒 **VİŞNE SERİSİ!**"
+        elif s1 == "🍋": carpici = 10; ozel_mesaj = "🍋 **LİMON KAZANCI!**"
+        elif s1 == "🍊": carpici = 15; ozel_mesaj = "🍊 **PORTAKAL RÜYASI!**"
+        elif s1 == "🍉": carpici = 20; ozel_mesaj = "🍉 **KARPUZ ŞÖLENİ!**"
+        elif s1 == "🔔": carpici = 30; ozel_mesaj = "🔔 **ALTIN ÇANLAR!**"
+        elif s1 == "💎": carpici = 50; ozel_mesaj = "💎 **ELMAS YAĞMURU!**"
+        elif s1 == "7️⃣": carpici = 100; ozel_mesaj = "🔥 **EFSANEVİ JACKPOT 777!**"
+        
+        kazanc = bahis * carpici
     
+    # 5. SONUÇ YAZDIRMA VE BAKİYE GÜNCELLEME
     if kazanc > 0:
-        cursor.execute('UPDATE users SET balance = balance + ? WHERE user_id = ?', (kazanc - bahis, user.id))
+        net_fark = kazanc - bahis
+        cursor.execute('UPDATE users SET balance = balance + ? WHERE user_id = ?', (net_fark, user.id))
         conn.commit()
+        
         yeni_bakiye, _ = get_user(user.id, user.first_name)
         sonuc = (
-            f"🎰  **SİBİRYA KASİNO**  🎰\n\n"
-            f"          [  **{s1}**  |  **{s2}**  |  **{s3}**  ]          \n\n"
+            f"🎰  **SİBİRYA KASİNO • SLOT**  🎰\n\n"
+            f"━━━━━━━━━━━━━━━━━━━\n"
+            f"          [  **{s1}**  |  **{s2}**  |  **{s3}**  ]          \n"
+            f"━━━━━━━━━━━━━━━━━━━\n\n"
             f"{ozel_mesaj}\n"
             f"🚀  **Çarpan:** `{carpici}X`\n"
-            f"💰  **Kazanç:** `+{kazanc:,} TL`\n"
+            f"💰  **Kazanılan:** `+{kazanc:,} TL`\n"
             f"💵  **Yatırılan:** `{bahis:,} TL`"
         )
-        else:
-        # 1. Kullanıcıdan bakiyeyi düş
+    else:
+        # Kayıp durumu (Bakiye düşer, Admin hesabına eklenir)
         cursor.execute('UPDATE users SET balance = balance - ? WHERE user_id = ?', (bahis, user.id))
-        
-        # 2. Kaybedilen tutarı Admin hesabına (Sana) ekle (Kasa her zaman kazanır)
-        cursor.execute('UPDATE users SET balance = balance + ? WHERE user_id = ?', (bahis, 7580862478))
-        
+        cursor.execute('UPDATE users SET balance = balance + ? WHERE user_id = ?', (bahis, 7580862478)) 
         conn.commit()
         
         yeni_bakiye, _ = get_user(user.id, user.first_name)
         sonuc = (
-            f"🎰  **SİBİRYA KASİNO**  🎰\n\n"
-            f"          [  **{s1}**  |  **{s2}**  |  **{s3}**  ]          \n\n"
+            f"🎰  **SİBİRYA KASİNO • SLOT**  🎰\n\n"
+            f"━━━━━━━━━━━━━━━━━━━\n"
+            f"          [  **{s1}**  |  **{s2}**  |  **{s3}**  ]          \n"
+            f"━━━━━━━━━━━━━━━━━━━\n\n"
             f"🥀  **Durum:** Kaybettin\n"
             f"💸  **Kaybedilen:** `-{bahis:,} TL`"
-    )
-    
-    await msg.edit_text(f"{sonuc}\n\n💳  **Bakiye:** `{yeni_bakiye:,} TL`", parse_mode="Markdown")
+        )
+
+    # Animasyonlu mesajı gerçek sonuçla değiştir
+    await msg.edit_text(f"{sonuc}\n\n💳  **Güncel Bakiye:** `{yeni_bakiye:,} TL`", parse_mode="Markdown")
     
 # --- DİĞER OYUNLAR ---
 
