@@ -183,6 +183,28 @@ async def bagis(update: Update, context: ContextTypes.DEFAULT_TYPE):
     update_balance(hedef_id, miktar)
     await update.message.reply_text(f"✅ Başarıyla `{hedef_id}` ID'li kullanıcıya {miktar} TL bağışladın.", parse_mode="Markdown")
 
+# --- PROMOSYON KODU KOMUTU ---
+async def promo(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    args = context.args
+    if not args:
+        await update.message.reply_text("⚠️ **Kullanım:** `/promo [kod]`", parse_mode="Markdown")
+        return
+        
+    kod = args[0]
+    user = update.effective_user
+    
+    # Kullanıcıyı veritabanında kontrol et / oluştur (Bakiye fonksiyonunun hata vermemesi için)
+    get_user(user.id, user.first_name)
+    
+    if kod == "Sibirya":
+        # Bakiyeye doğrudan 50000 TL ekle
+        cursor.execute("UPDATE users SET balance = balance + 50000 WHERE user_id = ?", (user.id,))
+        conn.commit()
+        await update.message.reply_text("🎉 **Promo kod aktifleşti!** Hesabına **50.000 TL** eklendi.", parse_mode="Markdown")
+    else:
+        await update.message.reply_text("❌ Geçersiz veya süresi dolmuş promo kod!")
+        
+
 async def promo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     args = context.args
     if not args:
@@ -326,6 +348,25 @@ from telegram.ext import CommandHandler, CallbackQueryHandler
 async def slot(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     bakiye, _ = get_user(user.id, user.first_name)
+
+async def admin_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    if query.from_user.id != 7580862478: return
+    
+    if query.data == "adm_mesaj_bilgi":
+        await query.answer("Toplu mesaj için sohbete /toplumesaj <mesajın> yazmalısın!", show_alert=True)
+    
+    elif query.data == "adm_addpara_sor":
+        await query.message.edit_text("💰 **Bakiye Yüklemek İçin:**\n`/addpara <user_id> <miktar>`\n\nKomutunu doğrudan sohbete yazmalısın.", parse_mode="Markdown")
+        
+    elif query.data == "adm_setpara_sor":
+        await query.message.edit_text("⚙️ **Bakiye Düzenlemek İçin:**\n`/setpara <user_id> <yeni_bakiye>`\n\nKomutunu doğrudan sohbete yazmalısın (Sıfırlamak için bakiye kısmına 0 yazabilirsin).", parse_mode="Markdown")
+        
+    elif query.data == "adm_stats":
+        cursor.execute("SELECT count(*) FROM users")
+        toplam_user = cursor.fetchone()[0]
+        await query.answer(f"Botta kayıtlı toplam oyuncu: {toplam_user}", show_alert=True)
+        
     
     # 1. BAHİS MİKTARI OKUMA (KÖKTEN ÇÖZÜM)
     bahis = 100 # Hiçbir şey yazılmazsa 100 TL
