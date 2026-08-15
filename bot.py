@@ -139,7 +139,8 @@ async def zenginler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         for i, row in enumerate(rows, 1):
             isin = row[0] if row[0] else "Oyuncu"
             bakiye_miktari = row[1] if row[1] is not None else 0
-            text += f"{i}. {isim} — **{bakiye_miktari:,}** TL\n"      
+            text += f"{i}. {isin} — **{bakiye_miktari:,}** TL\n"
+            
     await update.message.reply_text(text, parse_mode="Markdown")
     
 # BURASI ÇOK ÖNEMLİ: get_user en soldan (0 boşlukla) başlıyor, içeri gömülü değil!
