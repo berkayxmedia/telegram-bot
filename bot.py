@@ -184,26 +184,6 @@ async def bagis(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(f"✅ Başarıyla `{hedef_id}` ID'li kullanıcıya {miktar} TL bağışladın.", parse_mode="Markdown")
 
 # --- PROMOSYON KODU KOMUTU ---
-async def promo(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    args = context.args
-    if not args:
-        await update.message.reply_text("⚠️ **Kullanım:** `/promo [kod]`", parse_mode="Markdown")
-        return
-        
-    kod = args[0]
-    user = update.effective_user
-    
-    # Kullanıcıyı veritabanında kontrol et / oluştur (Bakiye fonksiyonunun hata vermemesi için)
-    get_user(user.id, user.first_name)
-    
-    if kod == "Sibirya":
-        # Bakiyeye doğrudan 50000 TL ekle
-        cursor.execute("UPDATE users SET balance = balance + 50000 WHERE user_id = ?", (user.id,))
-        conn.commit()
-        await update.message.reply_text("🎉 **Promo kod aktifleşti!** Hesabına **50.000 TL** eklendi.", parse_mode="Markdown")
-    else:
-        await update.message.reply_text("❌ Geçersiz veya süresi dolmuş promo kod!")
-        
 
 async def promo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     args = context.args
@@ -211,10 +191,10 @@ async def promo(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("⚠️ Kullanım: `/promo [kod]`", parse_mode="Markdown")
         return
     kod = args[0]
-    if kod == "BEDAVA1000":
+    if kod == "Sibirya":
         user = update.effective_user
-        update_balance(user.id, 1000)
-        await update.message.reply_text("🎉 Promo kod aktifleşti! Hesabına **1000 TL** eklendi.")
+        update_balance(user.id, 100000)
+        await update.message.reply_text("🎉 Promo kod aktifleşti! Hesabına **100000 TL** eklendi.")
     else:
         await update.message.reply_text("❌ Geçersiz veya süresi dolmuş promo kod!")
 
