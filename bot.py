@@ -238,20 +238,6 @@ async def addpara(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # --- SLOT OYUNU (%51 Kazanma Şansı) ---
 async def slot(update: Update, context: ContextTypes.DEFAULT_TYPE):
-import random
-
-async def slot(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user = update.effective_user
-    bakiye, _ = get_user(user.id, user.first_name)
-    
-    # Oyuncunun en az 100 TL'si olsun (isteğe göre değiştirebilirsin)
-    bahis = 100
-    if bakiye < bahis:
-        await update.message.reply_text("❌ Yetersiz bakiye! Slot çevirmek için en az 100 TL'ye ihtiyacın var.")
-        return
-
-    # Slot emojileri
-async def slot(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     bakiye, _ = get_user(user.id, user.first_name)
     
@@ -269,7 +255,7 @@ async def slot(update: Update, context: ContextTypes.DEFAULT_TYPE):
     kazanc = 0
     carpici = 0
     
-    # Çarpan mekanizması ve şans oranları
+    # Çarpan mekanizması
     if s1 == s2 == s3:
         if s1 == "7️⃣":
             carpici = 50
@@ -284,18 +270,18 @@ async def slot(update: Update, context: ContextTypes.DEFAULT_TYPE):
         kazanc = bahis * carpici
 
     else:
-        # Kazanma şansını artıran sürpriz küçük çarpanlar
         surpriz_sans = random.random()
         if surpriz_sans < 0.40:
             carpici = random.choice([1, 1.5, 2])
             kazanc = int(bahis * carpici)
 
-    # Sonuca göre bakiye ve kaliteli arayüz metni
+    # Sonuca göre veritabanını doğrudan güncelliyoruz
     if kazanc > 0:
-        net_kazanc = kazanc - bahis
-        update_balance(user.id, net_kazanc)
-        yeni_bakiye, _ = get_user(user.id, user.first_name)
+        net_fark = kazanc - bahis # Kazandığı paradan bahis miktarını netleştiriyoruz
+        cursor.execute('UPDATE users SET balance = balance + ? WHERE user_id = ?', (net_fark, user.id))
+        conn.commit()
         
+        yeni_bakiye, _ = get_user(user.id, user.first_name)
         mesaj = (
             f"🎰 **SIBIHYA KASINO • SLOT** 🎰\n"
             f"━━━━━━━━━━━━━━━━━━━\n"
@@ -307,10 +293,11 @@ async def slot(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"💳 **Güncel Bakiye:** `{yeni_bakiye:,} TL`"
         )
     else:
-        # Kaybetme durumunda bakiyeden direkt düşüyoruz
-        update_balance(user.id, -bahis)
-        yeni_bakiye, _ = get_user(user.id, user.first_name)
+        # Kaybettiğinde direkt 100 TL'yi veritabanından düşüyoruz ve net yazdırıyoruz
+        cursor.execute('UPDATE users SET balance = balance - ? WHERE user_id = ?', (bahis, user.id))
+        conn.commit()
         
+        yeni_bakiye, _ = get_user(user.id, user.first_name)
         mesaj = (
             f"🎰 **SIBIHYA KASINO • SLOT** 🎰\n"
             f"━━━━━━━━━━━━━━━━━━━\n"
