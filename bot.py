@@ -231,99 +231,71 @@ async def addpara(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
 
     # Sadece bakiyeyi güncelliyoruz, isme dokunmuyoruz ki veritabanı bozulmasın
-
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import CommandHandler, CallbackQueryHandler
-
-# --- 1. /admin KOMUTU VE PANEL BUTONLARI ---
+# --- 1. ADMIN PANELİ ---
 async def admin_paneli(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # Sadece senin ID'n ile çalışır
-    if update.effective_user.id != 7580862478:
-        await update.message.reply_text("❌ Buraya girmeye yetkin yok!")
-        return
+    if update.effective_user.id != 7580862478: return
 
     keyboard = [
-        [
-            InlineKeyboardButton("📢 Toplu Mesaj Gönder", callback_data="adm_mesaj_bilgi")
-        ]
+        [InlineKeyboardButton("💰 Bakiye Yükle", callback_data="adm_addpara_sor")],
+        [InlineKeyboardButton("📢 Toplu Mesaj Gönder", callback_data="adm_mesaj_bilgi")],
+        [InlineKeyboardButton("📊 İstatistik", callback_data="adm_stats")]
     ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-
-    await update.message.reply_text(
-        "👑 **ADMİN PANELİNE HOŞ GELDİN BERKAY!**\n\n"
-        "Toplu mesaj göndermek için aşağıdaki komutu kullanabilirsin:\n"
-        "`/toplumesaj <mesajınız>`\n\n"
-        "İşlem seç:", 
-        reply_markup=reply_markup, 
-        parse_mode="Markdown"
-    )
+    await update.message.reply_text("👑 **ADMİN PANELİ**", reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
 
 # --- 2. TOPLU MESAJ KOMUTU ---
-async def toplu_mesaj(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def toplu_mesaj(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     if user.id != 7580862478: return
 
-    # .join yerine doğrudan tüm metni alıyoruz ki satır başları korunsun
-    if not context.message.text: return
+    if not update.message.text: return
     
-    # "/toplumesaj" kısmını atıp geri kalan her şeyi alıyoruz
-    mesaj_metni = update.message.text.split(maxsplit=1)
-    if len(mesaj_metni) < 2:
-        await update.message.reply_text("⚠️ Lütfen gönderilecek mesajı yaz.")
+    mesaj_parcalari = update.message.text.split(maxsplit=1)
+    if len(mesaj_parcalari) < 2:
+        await update.message.reply_text("⚠️ Lütfen gönderilecek mesajı yaz.\nÖrnek: `/toplumesaj Merhaba millet!`", parse_mode="Markdown")
         return
     
-    duyuru = mesaj_metni[1] # Satır başlarını koruyan asıl metin burada
+    duyuru = mesaj_parcalari[1]
     
     cursor.execute("SELECT user_id FROM users")
     users = cursor.fetchall()
     
     basarili = 0
-    await update.message.reply_text("🚀 Gönderim başlıyor...")
+    basarisiz = 0
+    durum_mesaji = await update.message.reply_text("🚀 Toplu mesaj gönderimi başlatıldı...")
 
     for row in users:
          try:
              await context.bot.send_message(chat_id=row[0], text=duyuru, parse_mode="Markdown")
              basarili += 1
              await asyncio.sleep(0.1)
-         except: pass
-
-    await update.message.reply_text(f"✅ Gönderim tamamlandı. Ulaşılan: {basarili}")
-    
-    # Veritabanındaki tüm kullanıcıları çek
-    cursor.execute("SELECT user_id FROM users")
-    users = cursor.fetchall()
-    
-    basarili = 0
-    basarisiz = 0
-
-    durum_mesaji = await update.message.reply_text("🚀 Toplu mesaj gönderimi başlatıldı, lütfen bekleyin...")
-
-    for row in users:
-         hedef_id = row[0]
-         try:
-             await context.bot.send_message(chat_id=hedef_id, text=mesaj_metni, parse_mode="Markdown")
-             basarili += 1
-             await asyncio.sleep(0.1) # Telegram spam (flood) sınırına takılmamak için
          except Exception:
-             basarisiz += 1 # Botu engelleyenler veya sohbeti silenler
+             basarisiz += 1
 
     await durum_mesaji.edit_text(
         f"✅ **Toplu Mesaj Tamamlandı!**\n\n"
-        f"📤 Başarılı Gönderilen: `{basarili}`\n"
+        f"📤 Başarılı: `{basarili}`\n"
         f"❌ Ulaşılamayan: `{basarisiz}`",
         parse_mode="Markdown"
     )
 
-# --- 3. PANEL BUTON TIKLAMA YÖNETİCİSİ ---
+# --- 3 PANEL BUTON İŞLEYİCİSİ ---
 async def admin_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    if query.from_user.id != 7580862478:
-        return
-        
-    if query.data == "adm_mesaj_bilgi":
-        await query.answer("Toplu mesaj için sohbete /toplumesaj yazmalısın!", show_alert=True)
+    if query.from_user.id != 7580862478: return
     
+    if query.data == "adm_mesaj_bilgi":
+        await query.answer("Toplu mesaj için sohbete /toplumesaj <mesajın> yazmalısın!", show_alert=True)
+    
+    elif query.data == "adm_addpara_sor":
+        await query.message.edit_text("💰 **Bakiye Yüklemek İçin:**\n`/addpara <user_id> <miktar>`\n\nKomutunu doğrudan sohbete yazmalısın.", parse_mode="Markdown")
+        
+    elif query.data == "adm_stats":
+        cursor.execute("SELECT count(*) FROM users")
+        toplam_user = cursor.fetchone()[0]
+        await query.answer(f"Botta kayıtlı toplam oyuncu: {toplam_user}", show_alert=True)
+        
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import CommandHandler, CallbackQueryHandler
 
 async def slot(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
