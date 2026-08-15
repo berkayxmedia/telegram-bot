@@ -450,33 +450,84 @@ async def aviator(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     bakiye, _ = get_user(user.id, user.first_name)
     
-    bahis = 100 # Varsayılan
-    if context.args:
-        try: bahis = int(context.args[0])
-        except: pass
-    
-    if bakiye < bahis:
-        await update.message.reply_text("❌ Yetersiz bakiye!")
+    # Kullanıcıdan hem bahsi hem de hedef çarpanı alıyoruz
+    if len(context.args) < 2:
+        await update.message.reply_text(
+            "⚠️ **Kullanım:** `/aviator <bahis> <hedef_x>`\n"
+            "Örnek: `/aviator 100 2.5` (100 TL yatırır, 2.5x'te otomatik çeker)", 
+            parse_mode="Markdown"
+        )
+        return
+        
+    try:
+        bahis = float(context.args[0])
+        hedef_x = float(context.args[1])
+    except ValueError:
+        await update.message.reply_text("⚠️ **Hatalı format!** Bahis ve hedef çarpan sayı olmalıdır.")
         return
 
-    # Parayı kasaya hemen çekelim
+    # Sınırlandırmalar ve kontroller
+    if bahis <= 0:
+        await update.message.reply_text("⚠️ Geçersiz bahis miktarı!")
+        return
+        
+    if hedef_x < 1.01 or hedef_x > 250:
+        await update.message.reply_text("⚠️ Hedef çarpan **1.01x** ile **250x** arasında olmalıdır.")
+        return
+
+    if bakiye < bahis:
+        await update.message.reply_text(f"❌ **Yetersiz Bakiye!**\n(Bakiyen: {bakiye:,.2f} TL)")
+        return
+
+    # Oyuna girerken parayı bakiyeden düşüyoruz
     cursor.execute('UPDATE users SET balance = balance - ? WHERE user_id = ?', (bahis, user.id))
     conn.commit()
 
-    # Patlama noktasını oyun başında belirle (Adil şans)
-    patlama_x = round(random.uniform(1.0, 250.0), 2)
-    aviator_games[user.id] = {"bahis": bahis, "patlama": patlama_x, "aktif": True}
-
-    keyboard = [[InlineKeyboardButton("💸 PARAYI ÇEK", callback_data="cek")]]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-
-    await update.message.reply_text(
-        f"✈️ **AVIATOR BAŞLADI!**\n"
-        f"Bahis: `{bahis} TL`\n"
-        f"Çarpan: `1.00x`\n\n"
-        f"Uçak yükseliyor, butona zamanında bas!",
-        reply_markup=reply_markup, parse_mode="Markdown"
+    # Başlangıç mesajı
+    msg = await update.message.reply_text(
+        f"🛫 **AVIATOR BAŞLIYOR!**\n\n"
+        f"💵 **Bahis:** `{bahis:,.2f} TL`\n"
+        f"🎯 **Hedeflenen Çarpan:** `{hedef_x}x`\n\n"
+        f"☁️ *Uçak havalanıyor...*", 
+        parse_mode="Markdown"
     )
+    
+    # Uçağın uçma hissini vermek için ufak bir bekleme süresi
+    await asyncio.sleep(2.5)
+    
+    # 1.00 ile 250.00 arası rastgele patlama noktasını belirliyoruz
+    patlama_x = round(random.uniform(1.0, 250.0), 2)
+    
+    # Sonuçları değerlendiriyoruz
+    if hedef_x <= patlama_x:
+        # Uçak hedefi buldu veya geçti (KAZANÇ)
+        kazanc = bahis * hedef_x
+        cursor.execute('UPDATE users SET balance = balance + ? WHERE user_id = ?', (kazanc, user.id))
+        conn.commit()
+        
+        yeni_bakiye, _ = get_user(user.id, user.first_name)
+        
+        await msg.edit_text(
+            f"🛬 **UÇAK UÇTU!** (Patlama Noktası: `{patlama_x}x`)\n\n"
+            f"✅ **KAZANDIN!** Uçak belirlediğin hedefe ulaştı.\n\n"
+            f"🎯 **Bozdurulan Hedef:** `{hedef_x}x`\n"
+            f"💰 **Kazanılan:** `+{kazanc:,.2f} TL`\n"
+            f"💳 **Güncel Bakiye:** `{yeni_bakiye:,.2f} TL`",
+            parse_mode="Markdown"
+        )
+    else:
+        # Uçak hedefe ulaşamadan patladı (KAYIP)
+        # Bakiye zaten en başta düşüldüğü için sadece mesaj güncelliyoruz
+        yeni_bakiye, _ = get_user(user.id, user.first_name)
+        
+        await msg.edit_text(
+            f"💥 **UÇAK DÜŞTÜ!** (Patlama Noktası: `{patlama_x}x`)\n\n"
+            f"❌ **KAYBETTİN!** Uçak sen bozduramadan patladı.\n\n"
+            f"🎯 **Hedefin:** `{hedef_x}x`\n"
+            f"💸 **Kaybedilen:** `-{bahis:,.2f} TL`\n"
+            f"💳 **Güncel Bakiye:** `{yeni_bakiye:,.2f} TL`",
+            parse_mode="Markdown"
+        )
 
 async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
