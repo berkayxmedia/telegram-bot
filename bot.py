@@ -1,5 +1,5 @@
 import random
-import sqlite3
+import libsql_client
 import asyncio
 from datetime import datetime, timedelta
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
@@ -20,39 +20,39 @@ threading.Thread(target=run_server, daemon=True).start()
 TOKEN = "8945607116:AAHMB_So_Ei8t1LjFJ6WUGvE1VwTGv455Xw"
 ADMIN_ID = 7580862478
 
-# --- VERİTABANI BAŞLANGICI ---
-conn = sqlite3.connect('casino.db', check_same_thread=False)
-cursor = conn.cursor()
+# --- TURSO BULUT VERİTABANI BAĞLANTISI ---
+url = "libsql://telegram-bot-berkayxmedia.aws-ap-northeast-1.turso.io"
+auth_token = "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJpYXQiOjE3ODY4OTg4NjAsImlkIjoiMDFhMDBiNzYtOWUwMS03OTjjLWJiNDgtNjJiMmJiMzhmY2IzIiwia2lkIjoiT0tWRl8wTjl1NDVZaHFzam5Nblg5OVprU3o0Q1hNLXJ5OXhuZUFBNlJTSSIsInJpZCI6IjQzZjIzZjVhLTY3NDUtNDNmYS1hYjEyLWVjNmM3YTdjYjQ5ZCJ9.A5P--IKYt7sLY0JEK6wHDLApcfEaWlUXxHNuCk-hQeNe1N4aUuIKRXHOa7A_XAboo4wJfrScYRVNGga6d0BBCw"
 
-cursor.execute('''
+client = libsql_client.create_client(url, auth_token=auth_token)
+
+# Tabloyu bulutta oluşturuyoruz
+client.execute("""
 CREATE TABLE IF NOT EXISTS users (
     user_id INTEGER PRIMARY KEY,
     username TEXT,
     balance INTEGER DEFAULT 1000,
     last_daily TEXT
 )
-''')
-conn.commit()
+""")
 
 # Aktif uçuşları takip etmek için sözlük
-aviator_aktif_oyunlar = {}
 def get_user(user_id, username="Oyuncu"):
-    cursor.execute('SELECT balance, last_daily FROM users WHERE user_id = ?', (user_id,))
-    row = cursor.fetchone()
+    result = client.execute("SELECT balance, last_daily FROM users WHERE user_id = ?", (user_id,))
+    row = result.rows[0] if result.rows else None
+    
     if not row:
-        cursor.execute('INSERT INTO users (user_id, username, balance) VALUES (?, ?, ?)', (user_id, username, 1000))
-        conn.commit()
+        client.execute("INSERT INTO users (user_id, username, balance) VALUES (?, ?, ?)", (user_id, username, 1000))
         return 1000, None
     else:
-        cursor.execute('UPDATE users SET username = ? WHERE user_id = ?', (username, user_id))
-        conn.commit()
-    return row[0], row[1]
-    
+        client.execute("UPDATE users SET username = ? WHERE user_id = ?", (username, user_id))
+        return row[0], row[1]
 
 def update_balance(user_id, amount):
-    cursor.execute('UPDATE users SET balance = balance + ? WHERE user_id = ?', (amount, user_id))
-    conn.commit()
-
+    current = client.execute("SELECT balance FROM users WHERE user_id = ?", (user_id,)).rows[0][0]
+    new_balance = current + amount
+    client.execute("UPDATE users SET balance = ? WHERE user_id = ?", (new_balance, user_id))
+    
 def miktar_coz(arg, bakiye):
     if arg.lower() == "max":
         return bakiye
