@@ -14,19 +14,17 @@ def run_server():
     server = HTTPServer(('0.0.0.0', 10000), SimpleHandler)
     server.serve_forever()
 
-# Botla birlikte arka planda port dinlemesi için bunu  başlatıyoruz:
 threading.Thread(target=run_server, daemon=True).start()
 
-TOKEN = "8945607116:AAHMB_So_Ei8t1LjFJ6WUGvE1VwTGv455Xw"
-ADMIN_ID = 7580862478
+TOKEN = "8945607116:AAHMB_So_El8t1LjFJ6MUvGz1VwTV455Xw"
+ADMIN_ID = 7580062478
 
-# --- TURSO BULUT VERİTABANI BAĞLANTISI ---
+# --- TURSO BULUT VERİTABANI ---
 url = "libsql://telegram-bot-berkayxmedia.aws-ap-northeast-1.turso.io"
-auth_token = "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJpYXQiOjE3ODY4OTg4NjAsImlkIjoiMDFhMDBiNzYtOWUwMS03OTjjLWJiNDgtNjJiMmJiMzhmY2IzIiwia2lkIjoiT0tWRl8wTjl1NDVZaHFzam5Nblg5OVprU3o0Q1hNLXJ5OXhuZUFBNlJTSSIsInJpZCI6IjQzZjIzZjVhLTY3NDUtNDNmYS1hYjEyLWVjNmM3YTdjYjQ5ZCJ9.A5P--IKYt7sLY0JEK6wHDLApcfEaWlUXxHNuCk-hQeNe1N4aUuIKRXHOa7A_XAboo4wJfrScYRVNGga6d0BBCw"
+auth_token = "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJpYXQiOjE3ODY4OTg4NjAsImlkIjoiMDFhMDBiNzYtOWUwMS03OTJjLWJiNDgtNjJiMmJiMzhmY2IzIiwia2lkIjoiT0tWRl8wTjl1NDVZaHFzam5Nblg5OVprU3o0Q1hNLXJ5OXhuZUFBNlJTSSIsInJpZCI6IjQzZjIzZjVhLTY3NDUtNDNmYS1hYjEyLWVjNmM3YTdjYjQ5ZCJ9.A5P--IKYt7sLY0JEK6wHDLApcfEaWlUXxHNuCk-hQeNe1N4aUuIKRXHOa7A_XAboo4wJfrScYRVNGga6d0BBCw"
 
 client = libsql_client.create_client(url, auth_token=auth_token)
 
-# Tabloyu bulutta oluşturuyoruz
 client.execute("""
 CREATE TABLE IF NOT EXISTS users (
     user_id INTEGER PRIMARY KEY,
@@ -37,6 +35,8 @@ CREATE TABLE IF NOT EXISTS users (
 """)
 
 # Aktif uçuşları takip etmek için sözlük
+aviator_aktif_oyunlar = {}
+
 def get_user(user_id, username="Oyuncu"):
     result = client.execute("SELECT balance, last_daily FROM users WHERE user_id = ?", (user_id,))
     row = result.rows[0] if result.rows else None
